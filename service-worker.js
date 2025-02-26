@@ -1,10 +1,11 @@
 const cacheName = 'chordshift-pwa-cache-v1';
 const assets = [
   '/',
-  '/styles.css',
-  '/app.js',
   '/index.html',
+  '/app.js',
+  '/styles.css',
   '/images/icon-192x192.png',
+  '/images/icon-512x512.png',
   '/manifest.json',
 ];
 
