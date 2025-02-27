@@ -1,3 +1,79 @@
-h1 {
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    width: 100%;
+    height: 100%;
+    background-color: aqua;
+}
+
+img {
+    width: 50%;
+    height: 50%;
+}
+
+#main {
+    width: 100vw;
+    height: 100vh;
+    background-color: rgb(74, 74, 136);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#header {
+    height: 10vh;
+    width: 100vw;
     background-color: aliceblue;
+}
+
+#pre-transpose {
+    height: 15vh;
+}
+
+#instrument-1 {
+    height: 20vh;
+    display: flex;
+    align-items: center;
+}
+
+#chords {
+    height: 10vh;
+    display: flex;
+    align-items: center;
+    gap: 1.5vw;
+}
+
+#instrument-2 {
+    height: 20vh;
+}
+
+#post-transpose {
+    height: 15vh;
+}
+
+#footer {
+    height: 10vh;
+    width: 100vw;
+    background-color: aquamarine;
+}
+
+.chord-button {
+    width: min(10vh, 12vw);
+    height: min(10vh, 12vw);
+}
+
+.fret {
+    height: 10vh;
+    width: 5vw;
+    background-color: white;
+    text-align: center;
+    justify-content: center;
+}
+
+.fret.hovered {
+    background-color: rgb(197, 197, 197);
 }
