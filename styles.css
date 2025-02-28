@@ -28,27 +28,27 @@ img {
     height: 10vh;
     width: 100vw;
     background-color: aliceblue;
+    margin-bottom: 2vh;
 }
 
 #pre-transpose {
     height: 15vh;
+    display: flex;
+    align-items: center;
 }
 
 #instrument-1 {
-    height: 20vh;
+    height: 19vh;
     display: flex;
     align-items: center;
 }
 
 #chords {
     height: 10vh;
-    display: flex;
-    align-items: center;
-    gap: 1.5vw;
 }
 
 #instrument-2 {
-    height: 20vh;
+    height: 19vh;
 }
 
 #post-transpose {
@@ -61,9 +61,20 @@ img {
     background-color: aquamarine;
 }
 
+.chord-grid {
+    display: flex;
+    flex-wrap: wrap;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5vw;
+}
+
 .chord-button {
     width: min(10vh, 12vw);
     height: min(10vh, 12vw);
+    transition: transform 0.5s ease-in-out;
+    border-radius: 5vw;
 }
 
 .fret {
