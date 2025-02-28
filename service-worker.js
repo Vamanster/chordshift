@@ -1,12 +1,12 @@
 const cacheName = 'chordshift-pwa-cache-v1';
 const assets = [
-  '/chordshift/',
-  '/chordshift/manifest.json',
-  '/chordshift/app.js',
-  '/chordshift/styles.css',
-  '/chordshift/images/icon-192x192.png',
-  '/chordshift/images/icon-512x512.png',
-  '/chordshift/index.html',
+  '/',
+  '/manifest.json',
+  '/app.js',
+  '/styles.css',
+  '/images/icon-192x192.png',
+  '/images/icon-512x512.png',
+  '/index.html',
 ];
 
 // Install the service worker and cache assets

@@ -2,6 +2,7 @@
     "name": "Chord/Shift",
     "short_name": "chordshift",
     "description": "A progressive web app for transposing guitar chords to other instruments.",
+    "id": "/chordshift/",
     "start_url": "/chordshift/",
     "display": "standalone",
     "background_color": "#ffffff",
