@@ -116,7 +116,7 @@ const chordButtons = document.querySelectorAll(".chord-button");
 
 chordButtons.forEach(button => {
   button.addEventListener("click", () => {
-    const chordName = button.getAttribute("chord");
+    const chord = button.getAttribute("chord");
 
     const preButton = button.cloneNode(true);
     preTranspose.appendChild(preButton);
@@ -129,16 +129,82 @@ chordButtons.forEach(button => {
       preTranspose.childNodes[index].remove();
       postTranspose.childNodes[index].remove();
     });
+
     postButton.addEventListener("click", () => {
-      const index = Array.from(postTranspose.children).indexOf(postButton) + 1;
-      preTranspose.childNodes[index].remove();
-      postTranspose.childNodes[index].remove();
+      highlightChord(postButton.textContent);
+
+      postButton.classList.add("highlight");
+      setTimeout(() => {
+        postButton.classList.remove("highlight");
+      }, 1000);
     });
 
     updateTranspose();
   });
 });
 
+
+//#endregion
+
+//#region Keyboard
+
+const keys = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const majorChords = {
+    "C": ["C", "E", "G"],
+    "C#": ["C#", "F", "G#"],
+    "D": ["D", "F#", "A"],
+    "D#": ["D#", "G", "A#"],
+    "E": ["E", "G#", "B"],
+    "F": ["F", "A", "C"],
+    "F#": ["F#", "A#", "C#"],
+    "G": ["G", "B", "D"],
+    "G#": ["G#", "C", "D#"],
+    "A": ["A", "C#", "E"],
+    "A#": ["A#", "D", "F"],
+    "B": ["B", "D#", "F#"],
+    "Am": ["A", "C", "E"],
+    "A#m": ["A#", "C#", "F"],
+    "Bm": ["B", "D", "F#"],
+    "Cm": ["C", "D#", "G"],
+    "C#m": ["C#", "E", "G#"],
+    "Dm": ["D", "F", "A"],
+    "D#m": ["D#", "F#", "A#"],
+    "Em": ["E", "G", "B"],
+    "Fm": ["F", "G#", "C"],
+    "F#m": ["F#", "A", "C#"],
+    "Gm": ["G", "A#", "D"],
+    "G#m": ["G#", "B", "D#"]
+};
+
+function createKeyboard() {
+    const instrument = document.getElementById("instrument-2");
+    let keyboard = document.createElement("div");
+    keys.forEach(note => {
+        let key = document.createElement("div");
+        key.classList.add("key");
+        if (note.includes("#")) {
+            key.classList.add("black-key");
+        }
+        key.textContent = note;
+        key.dataset.note = note;
+        keyboard.appendChild(key);
+    });
+
+    keyboard.classList.add("keyboard");
+    instrument.appendChild(keyboard);
+}
+
+function highlightChord(chordName) {
+    let keysToHighlight = majorChords[chordName];
+    document.querySelectorAll(".key").forEach(key => key.classList.remove("highlight"));
+    if (keysToHighlight) {
+        keysToHighlight.forEach(note => {
+            document.querySelectorAll(`[data-note='${note}']`).forEach(el => el.classList.add("highlight"));
+        });
+    }
+}
+
+createKeyboard();
 
 //#endregion
 
