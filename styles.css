@@ -114,6 +114,12 @@ img {
     border-radius: 5vw;
 }
 
+.chord-selector {
+    position: absolute;
+    width: min(10vh, 12vw);
+    background-color: white;
+}
+
 .fret {
     height: 10vh;
     width: 5vw;
@@ -124,4 +130,8 @@ img {
 
 .fret.hovered {
     background-color: rgb(197, 197, 197);
+}
+
+.hidden {
+    display: none;
 }
