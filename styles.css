@@ -117,6 +117,18 @@ img {
     align-items: center;
 }
 
+.pre-chord-button {
+    width: min(10vh, 12vw);
+    height: min(10vh, 12vw);
+    transition: transform 0.5s ease-in-out;
+    background-color: white;
+    border-style: outset;
+    border-radius: 5vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 .chord-selector {
     position: absolute;
     width: min(10vh, 12vw);

@@ -331,7 +331,6 @@ document.addEventListener("touchend", (e) => {
 
   if (chordSelector.contains(target)) {
     const newChord = target.textContent;
-    console.log("Touch ended on chord-selector child:", );
     if (target.matches(".some-option")) {
       console.log("User selected option:", newChord);
     }
@@ -339,6 +338,29 @@ document.addEventListener("touchend", (e) => {
     activeButton.querySelector(".chord-text").textContent = newChord;
 
     highlightChord(newChord);
+  }
+  else
+  {
+    const newChord = activeButton.getAttribute("chord");
+
+    console.log("ADD CHORD: " + newChord);
+    
+    const button = document.createElement("buton");
+    button.setAttribute("chord", newChord);
+    button.setAttribute("type", "button");
+    button.classList.add("pre-chord-button");
+    button.textContent = newChord;
+
+    button.addEventListener("click", () => {
+      const index = Array.from(preTranspose.children).indexOf(button) + 1;
+      preTranspose.childNodes[index].remove();
+      postTranspose.childNodes[index].remove();
+    });
+
+    const postButton = button.cloneNode(true);
+    postTranspose.appendChild(postButton);
+
+    preTranspose.appendChild(button);
   }
 
   chordSelector.classList.add("hidden");
