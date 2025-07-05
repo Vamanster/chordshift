@@ -102,7 +102,25 @@ for (let i = 0; i < 12; i++) {
   const fret = document.createElement("div");
   fret.classList.add("fret");
   fret.style.width = `calc(${i}px + 5vw)`;
+  fret.style.height = `calc(${6 - (i / 2)}px + 8vh)`;
   fret.setAttribute("fret-number", 12 - i);
+  switch (12 - i) {
+    case 3:
+      fret.textContent = "○"
+      break;
+    case 5:
+      fret.textContent = "○"
+      break;
+    case 7:
+      fret.textContent = "○"
+      break;
+    case 9:
+      fret.textContent = "○"
+      break;
+    case 12:
+      fret.innerHTML = "◌<br/><br/>◌"
+      break;
+  }
   instrument_1.appendChild(fret);
 }
 

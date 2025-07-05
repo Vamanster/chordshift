@@ -112,18 +112,33 @@ img {
     height: min(10vh, 12vw);
     transition: transform 0.5s ease-in-out;
     border-radius: 5vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .chord-selector {
     position: absolute;
     width: min(10vh, 12vw);
     background-color: white;
+    transform: translateY(calc(-50% + -2vh));
+}
+
+.selector-option {
+    border: 1px solid rgb(0, 0, 0);
+    border-top-width: 0px;
+    border-bottom-width: 0px;
 }
 
 .fret {
     height: 10vh;
     width: 5vw;
     background-color: white;
+    border: 1px solid rgb(230, 230, 230);
+    border-top-width: 0px;
+    border-bottom-width: 0px;
+    display: flex;
+    align-items: center;
     text-align: center;
     justify-content: center;
 }
