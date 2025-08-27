@@ -17,14 +17,14 @@ function transposeChord(chord, steps) {
   
   // Helper function to get the root note and its accidental (e.g., 'C#', 'Db')
   function getRootNote(chord) {
-    const regex = /^([A-Ga-g]+)([#b]*)/; // Match root note (e.g., "C", "Db", "D#")
+    const regex = /^([A-G]+)([#b]*)/; // Match root note (e.g., "C", "Db", "D#")
     const match = chord.match(regex);
     return match ? match[0] : null;
   }
 
   // Helper function to get the chord's modifiers (e.g., 'm', 'maj7', '7')
   function getModifiers(chord) {
-    const regex = /([a-zA-Z0-9]+)/g; 
+    const regex = /([a-z0-9]+)/g; 
     const match = chord.match(regex);
     return match && match.length > 1 ? match.slice(1).join('') : '';
   }
@@ -58,8 +58,9 @@ function updateTranspose() {
   postTranspose.childNodes.forEach(node => {
     if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("chord")) {
       const baseChord = node.getAttribute("chord").toString();
+      const chordType = baseChord.replace(/^[A-G]#?/, '').toString();
       const result = transposeChord(baseChord, transposeAmount);
-      node.textContent = result;
+      node.textContent = result + chordType;
     }
   });
 
@@ -279,7 +280,7 @@ const sus4 = {
   'Gsus4': ['G', 'C', 'D']
 };
 
-const chordLists = [fifths, sevenths, aug, dim, m7, maj, maj7, sus2, sus4];
+const chordLists = [fifths, min, sevenths, aug, dim, m7, maj, maj7, sus2, sus4];
 
 function getChordNotes(chordName) {
   
@@ -358,6 +359,10 @@ document.addEventListener("touchend", (e) => {
     });
 
     const postButton = button.cloneNode(true);
+    postButton.addEventListener("click", () => {
+      highlightChord(postButton.textContent);
+    });
+
     postTranspose.appendChild(postButton);
 
     preTranspose.appendChild(button);
