@@ -12,6 +12,7 @@
     <div id="main">
         <div id="header">
             <H1>Chord/Shift</H1>
+            <button id="settings-button" type="button" class="settings-button" aria-label="Settings">⚙</button>
         </div>
 
         <div id="pre-transpose" class="chord-grid">
@@ -58,6 +59,37 @@
             </div>
             <div id="sheet-variations" class="sheet-variations"></div>
             <button id="sheet-add" type="button" class="sheet-add">Add</button>
+        </div>
+    </div>
+
+    <div id="settings-sheet" class="sheet" aria-hidden="true">
+        <div class="sheet-backdrop"></div>
+        <div class="sheet-panel" role="dialog" aria-label="Settings">
+            <div class="sheet-grabber">
+                <div class="sheet-handle"></div>
+                <div class="sheet-title">Settings</div>
+            </div>
+            <div class="sheet-body">
+                <label class="setting-row">
+                    <div class="setting-text">
+                        <div class="setting-name">Smart hand position</div>
+                        <div class="setting-description">Shows the best one-hand voicing on a two-octave keyboard, with finger numbers, voice-led through your progression.</div>
+                    </div>
+                    <input id="setting-smart-voicing" type="checkbox" class="switch">
+                </label>
+                <div class="setting-row setting-stacked">
+                    <div class="setting-text">
+                        <div class="setting-name">Hand span</div>
+                        <div class="setting-description">Widest stretch from thumb to little finger.</div>
+                    </div>
+                    <div id="setting-hand-span" class="segmented">
+                        <button type="button" data-span="12">Octave</button>
+                        <button type="button" data-span="14">9th</button>
+                        <button type="button" data-span="16">10th</button>
+                    </div>
+                </div>
+            </div>
+            <button id="settings-done" type="button" class="sheet-add">Done</button>
         </div>
     </div>
 

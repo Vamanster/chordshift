@@ -25,6 +25,10 @@ img {
 }
 
 #header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
     height: 10vh;
     width: 100vw;
     background-color: aliceblue;
@@ -74,6 +78,7 @@ img {
 }
 
 .key {
+    position: relative;
     width: 10vw;
     height: 15vh;
     background-color: white;
@@ -275,7 +280,8 @@ img {
     text-overflow: ellipsis;
 }
 
-.sheet-variations {
+.sheet-variations,
+.sheet-body {
     flex: 1;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -321,4 +327,135 @@ img {
     color: white;
     font-size: 18px;
     font-weight: bold;
+}
+
+
+.settings-button {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    background-color: transparent;
+    font-size: 26px;
+    line-height: 44px;
+}
+
+.sheet-title {
+    font-family: system-ui, sans-serif;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid rgb(230, 230, 230);
+}
+
+.setting-row.setting-stacked {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.setting-name {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.setting-description {
+    margin-top: 2px;
+    font-size: 13px;
+    color: rgb(110, 110, 110);
+}
+
+.switch {
+    appearance: none;
+    -webkit-appearance: none;
+    flex-shrink: 0;
+    position: relative;
+    width: 52px;
+    height: 32px;
+    border-radius: 16px;
+    background-color: rgb(200, 200, 200);
+    transition: background-color 0.2s ease;
+}
+
+.switch::before {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease;
+}
+
+.switch:checked {
+    background-color: rgb(74, 74, 136);
+}
+
+.switch:checked::before {
+    transform: translateX(20px);
+}
+
+.segmented {
+    display: flex;
+    border: 2px solid rgb(74, 74, 136);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.segmented button {
+    flex: 1;
+    height: 44px;
+    border: none;
+    background-color: white;
+    color: rgb(74, 74, 136);
+    font-size: 15px;
+    font-weight: bold;
+}
+
+.segmented button.selected {
+    background-color: rgb(74, 74, 136);
+    color: white;
+}
+
+.segmented.disabled {
+    opacity: 0.4;
+}
+
+/* Two-octave keyboard for smart hand position */
+
+.keyboard.wide .key {
+    width: 6.6vw;
+    font-size: 10px;
+}
+
+.keyboard.wide .black-key {
+    width: 4.4vw;
+    margin-left: -2.2vw;
+    margin-right: -2.2vw;
+}
+
+.key[data-finger]::after {
+    content: attr(data-finger);
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: rgb(74, 74, 136);
+    color: white;
+    font-family: system-ui, sans-serif;
+    font-size: 11px;
+    line-height: 18px;
 }

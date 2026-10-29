@@ -398,13 +398,147 @@ const chordLists = [fifths, min, sevenths, aug, dim, m7, maj, maj7, sus2, sus4, 
 
 //#endregion
 
+//#region Voicing
+
+// Right-hand fingers used for a voicing of n notes, low to high
+const fingerSets = { 1: [1], 2: [1, 5], 3: [1, 3, 5], 4: [1, 2, 3, 5], 5: [1, 2, 3, 4, 5] };
+const voicingLow = 48;  // C3
+const voicingHigh = 71; // B4
+const middleC = 60;
+
+function isBlackKey(midi) {
+  return keys[midi % 12].includes("#");
+}
+
+// Every combination taking one item from each list
+function combine(lists) {
+  return lists.reduce((combos, list) => combos.flatMap(combo => list.map(item => [...combo, item])), [[]]);
+}
+
+// How awkward / muddy a voicing is on its own (lower is better)
+function voicingCost(voicing, root) {
+  const fingers = fingerSets[voicing.length];
+  const lowest = voicing[0];
+  const highest = voicing[voicing.length - 1];
+  let cost = (highest - lowest) * 0.15;
+
+  for (let i = 1; i < voicing.length; i++) {
+    const gap = voicing[i] - voicing[i - 1];
+    // Comfortable reach grows with the number of fingers between, and the thumb reaches further
+    const reach = (fingers[i] - fingers[i - 1]) * 2 + (fingers[i - 1] === 1 ? 2 : 0);
+    cost += Math.max(0, gap - reach) * 0.5;
+
+    // Close intervals below E3 sound muddy
+    if (gap <= 4 && voicing[i - 1] < 52) {
+      cost += 1.5;
+    }
+  }
+
+  if (isBlackKey(lowest)) cost += 1;    // thumb on a black key
+  if (isBlackKey(highest)) cost += 0.5; // little finger on a black key
+  if (lowest % 12 !== root) cost += 1;  // prefer the root in the bass
+
+  const centre = voicing.reduce((sum, key) => sum + key, 0) / voicing.length;
+  cost += Math.abs(centre - middleC) * 0.08;
+
+  return cost;
+}
+
+// Every playable one-hand voicing of a chord within the keyboard range
+function getVoicings(chordName) {
+  const notes = getChordNotes(chordName);
+  if (!notes) return [];
+
+  const pitchClasses = notes.map(note => keys.indexOf(note));
+  const root = pitchClasses[0];
+
+  // Try the full chord, and the chord without a perfect fifth (the first note pianists drop)
+  const noteSets = [{ pitchClasses, dropped: 0 }];
+  const fifth = pitchClasses.indexOf((root + 7) % 12);
+  if (fifth > 0 && pitchClasses.length > 2) {
+    noteSets.push({ pitchClasses: pitchClasses.filter((_, i) => i !== fifth), dropped: 1 });
+  }
+
+  const voicings = [];
+  const seen = new Set();
+
+  noteSets.forEach(({ pitchClasses: set, dropped }) => {
+    if (set.length > 5) return; // more notes than fingers
+
+    for (let low = voicingLow; low <= voicingHigh; low++) {
+      if (!set.includes(low % 12)) continue;
+
+      // Keys within the hand span for each remaining note
+      const high = Math.min(low + settings.handSpan, voicingHigh);
+      const options = set.filter(pc => pc !== low % 12).map(pc => {
+        const candidates = [];
+        for (let key = low + 1; key <= high; key++) {
+          if (key % 12 === pc) candidates.push(key);
+        }
+        return candidates;
+      });
+      if (options.some(candidates => candidates.length === 0)) continue;
+
+      combine(options).forEach(combo => {
+        const voicing = [low, ...combo].sort((a, b) => a - b);
+        const id = voicing.join(",");
+        if (seen.has(id)) return;
+        seen.add(id);
+
+        voicings.push({
+          keys: voicing,
+          fingers: fingerSets[voicing.length],
+          cost: voicingCost(voicing, root) + dropped
+        });
+      });
+    }
+  });
+
+  return voicings;
+}
+
+// Cost of moving the hand from one voicing to the next
+function transitionCost(from, to) {
+  if (!from) return 0;
+  const shared = to.keys.filter(key => from.keys.includes(key)).length;
+  const shift = Math.abs(to.keys[0] - from.keys[0]) +
+    Math.abs(to.keys[to.keys.length - 1] - from.keys[from.keys.length - 1]);
+  return shift * 0.25 - shared * 0.5;
+}
+
+// Best voicing for each chord in a progression (Viterbi), trading per-chord cost against hand movement.
+// Chords with no voicing get null.
+function voiceProgression(chordNames) {
+  let paths = [{ voicings: [], last: null, cost: 0 }];
+
+  chordNames.forEach(chordName => {
+    const candidates = getVoicings(chordName);
+    if (candidates.length === 0) {
+      paths = paths.map(path => ({ ...path, voicings: [...path.voicings, null] }));
+      return;
+    }
+
+    paths = candidates.map(candidate => {
+      let best = null;
+      paths.forEach(path => {
+        const cost = path.cost + candidate.cost + transitionCost(path.last, candidate);
+        if (!best || cost < best.cost) {
+          best = { voicings: [...path.voicings, candidate], last: candidate, cost };
+        }
+      });
+      return best;
+    });
+  });
+
+  return paths.reduce((best, path) => (path.cost < best.cost ? path : best)).voicings;
+}
+
+//#endregion
+
 //#region Chords picker
 
 const chordButtons = document.querySelectorAll(".chord-button");
 const chordSheet = document.getElementById("chord-sheet");
-const sheetPanel = chordSheet.querySelector(".sheet-panel");
-const sheetGrabber = chordSheet.querySelector(".sheet-grabber");
-const sheetBackdrop = chordSheet.querySelector(".sheet-backdrop");
 const sheetRoots = document.getElementById("sheet-roots");
 const sheetPreview = document.getElementById("sheet-preview");
 const sheetNotes = document.getElementById("sheet-notes");
@@ -451,7 +585,7 @@ function addChord(newChord) {
 
   const postButton = button.cloneNode(true);
   postButton.addEventListener("click", () => {
-    highlightChord(postButton.textContent);
+    highlightChord(postButton.textContent, Array.from(postTranspose.children).indexOf(postButton));
   });
 
   postTranspose.appendChild(postButton);
@@ -459,6 +593,55 @@ function addChord(newChord) {
 
   updateTranspose();
 }
+
+// Show the chord being picked on the keyboard, as it will sound after transposing
+function previewSheetChord() {
+  highlightChord(transposeChord(sheetRoot + sheetSuffix, transposeAmount));
+}
+
+function openSheet(sheet) {
+  sheet.classList.add("open");
+  sheet.setAttribute("aria-hidden", "false");
+}
+
+function closeSheet(sheet) {
+  sheet.querySelector(".sheet-panel").style.transform = "";
+  sheet.classList.remove("open");
+  sheet.setAttribute("aria-hidden", "true");
+}
+
+// Every sheet closes on a backdrop tap or by swiping its header down
+document.querySelectorAll(".sheet").forEach(sheet => {
+  const panel = sheet.querySelector(".sheet-panel");
+  const grabber = sheet.querySelector(".sheet-grabber");
+  let dragStartY = null;
+  let dragOffset = 0;
+
+  sheet.querySelector(".sheet-backdrop").addEventListener("click", () => closeSheet(sheet));
+
+  grabber.addEventListener("touchstart", (e) => {
+    dragStartY = e.touches[0].clientY;
+    dragOffset = 0;
+    panel.classList.add("dragging");
+  }, { passive: true });
+
+  grabber.addEventListener("touchmove", (e) => {
+    if (dragStartY === null) return;
+    dragOffset = Math.max(0, e.touches[0].clientY - dragStartY);
+    panel.style.transform = `translateY(${dragOffset}px)`;
+  }, { passive: true });
+
+  grabber.addEventListener("touchend", () => {
+    panel.classList.remove("dragging");
+    if (dragOffset > 80) {
+      closeSheet(sheet);
+    }
+    else {
+      panel.style.transform = "";
+    }
+    dragStartY = null;
+  });
+});
 
 // Build the variation chips once; they only depend on the suffix
 variationGroups.forEach(group => {
@@ -478,7 +661,7 @@ variationGroups.forEach(group => {
     chip.addEventListener("click", () => {
       sheetSuffix = suffix;
       renderSheet();
-      highlightChord(sheetRoot + sheetSuffix);
+      previewSheetChord();
     });
     grid.appendChild(chip);
   });
@@ -499,7 +682,7 @@ function renderSheet() {
   });
 }
 
-function openSheet(button) {
+function openChordSheet(button) {
   activeButton = button;
   ({ root: sheetRoot, suffix: sheetSuffix } = splitChord(button.getAttribute("chord")));
 
@@ -516,27 +699,19 @@ function openSheet(button) {
     toggle.addEventListener("click", () => {
       sheetRoot = root;
       renderSheet();
-      highlightChord(sheetRoot + sheetSuffix);
+      previewSheetChord();
     });
     sheetRoots.appendChild(toggle);
   });
 
   renderSheet();
-  highlightChord(sheetRoot + sheetSuffix);
+  previewSheetChord();
   sheetVariations.scrollTop = 0;
-  chordSheet.classList.add("open");
-  chordSheet.setAttribute("aria-hidden", "false");
-}
-
-function closeSheet() {
-  activeButton = null;
-  sheetPanel.style.transform = "";
-  chordSheet.classList.remove("open");
-  chordSheet.setAttribute("aria-hidden", "true");
+  openSheet(chordSheet);
 }
 
 chordButtons.forEach(button => {
-  button.addEventListener("click", () => openSheet(button));
+  button.addEventListener("click", () => openChordSheet(button));
 });
 
 sheetAdd.addEventListener("click", () => {
@@ -544,37 +719,65 @@ sheetAdd.addEventListener("click", () => {
   activeButton.setAttribute("chord", chordName);
   activeButton.querySelector(".chord-text").textContent = chordName;
   addChord(chordName);
-  closeSheet();
+  closeSheet(chordSheet);
 });
 
-sheetBackdrop.addEventListener("click", closeSheet);
+//#endregion
 
-// Swipe the sheet header down to dismiss
-let dragStartY = null;
-let dragOffset = 0;
+//#region Settings
 
-sheetGrabber.addEventListener("touchstart", (e) => {
-  dragStartY = e.touches[0].clientY;
-  dragOffset = 0;
-  sheetPanel.classList.add("dragging");
-}, { passive: true });
+const settingsKey = "chordshift-settings";
+const settings = { smartVoicing: false, handSpan: 12 };
 
-sheetGrabber.addEventListener("touchmove", (e) => {
-  if (dragStartY === null) return;
-  dragOffset = Math.max(0, e.touches[0].clientY - dragStartY);
-  sheetPanel.style.transform = `translateY(${dragOffset}px)`;
-}, { passive: true });
+try {
+  Object.assign(settings, JSON.parse(localStorage.getItem(settingsKey)) || {});
+} catch (e) {
+  // Storage unavailable (private mode, blocked site data): keep the defaults
+}
 
-sheetGrabber.addEventListener("touchend", () => {
-  sheetPanel.classList.remove("dragging");
-  if (dragOffset > 80) {
-    closeSheet();
+function saveSettings() {
+  try {
+    localStorage.setItem(settingsKey, JSON.stringify(settings));
+  } catch (e) {
+    // Settings still apply for this visit
   }
-  else {
-    sheetPanel.style.transform = "";
-  }
-  dragStartY = null;
+}
+
+const settingsSheet = document.getElementById("settings-sheet");
+const settingsButton = document.getElementById("settings-button");
+const smartVoicingToggle = document.getElementById("setting-smart-voicing");
+const handSpanSetting = document.getElementById("setting-hand-span");
+
+function renderSettings() {
+  smartVoicingToggle.checked = settings.smartVoicing;
+  handSpanSetting.classList.toggle("disabled", !settings.smartVoicing);
+  handSpanSetting.querySelectorAll("button").forEach(button => {
+    button.classList.toggle("selected", parseInt(button.dataset.span) === settings.handSpan);
+    button.disabled = !settings.smartVoicing;
+  });
+}
+
+settingsButton.addEventListener("click", () => {
+  renderSettings();
+  openSheet(settingsSheet);
 });
+
+smartVoicingToggle.addEventListener("change", () => {
+  settings.smartVoicing = smartVoicingToggle.checked;
+  saveSettings();
+  renderSettings();
+  createKeyboard();
+});
+
+handSpanSetting.querySelectorAll("button").forEach(button => {
+  button.addEventListener("click", () => {
+    settings.handSpan = parseInt(button.dataset.span);
+    saveSettings();
+    renderSettings();
+  });
+});
+
+document.getElementById("settings-done").addEventListener("click", () => closeSheet(settingsSheet));
 
 //#endregion
 
@@ -585,8 +788,15 @@ const keys = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
 function createKeyboard() {
     const instrument = document.getElementById("instrument-2");
+    instrument.innerHTML = "";
+
+    // Smart voicing needs room for a whole hand position, so it shows two octaves (C3-B4)
+    const octaves = settings.smartVoicing ? 2 : 1;
+    const firstKey = settings.smartVoicing ? voicingLow : middleC;
+
     let keyboard = document.createElement("div");
-    keys.forEach(note => {
+    for (let midi = firstKey; midi < firstKey + octaves * 12; midi++) {
+        const note = keys[midi % 12];
         let key = document.createElement("div");
         key.classList.add("key");
         if (note.includes("#")) {
@@ -594,18 +804,42 @@ function createKeyboard() {
         }
         key.textContent = note;
         key.dataset.note = note;
+        key.dataset.midi = midi;
         keyboard.appendChild(key);
-    });
+    }
 
     keyboard.classList.add("keyboard");
+    keyboard.classList.toggle("wide", octaves > 1);
     instrument.appendChild(keyboard);
 }
 
-function highlightChord(chordName) {
-    const keysToHighlight = getChordNotes(chordName);
-
+// progressionIndex: position in the post-transpose list, or undefined to preview a chord as if added next
+function highlightChord(chordName, progressionIndex) {
     // Remove existing highlights
-    document.querySelectorAll(".key").forEach(key => key.classList.remove("highlight"));
+    document.querySelectorAll(".key").forEach(key => {
+        key.classList.remove("highlight");
+        delete key.dataset.finger;
+    });
+
+    if (settings.smartVoicing) {
+        const progression = Array.from(postTranspose.children).map(button => button.textContent);
+        if (progressionIndex === undefined) {
+            progression.push(chordName);
+            progressionIndex = progression.length - 1;
+        }
+
+        const voicing = voiceProgression(progression)[progressionIndex];
+        if (voicing) {
+            voicing.keys.forEach((midi, i) => {
+                const key = document.querySelector(`.key[data-midi='${midi}']`);
+                key.classList.add("highlight");
+                key.dataset.finger = voicing.fingers[i];
+            });
+            return;
+        }
+    }
+
+    const keysToHighlight = getChordNotes(chordName);
 
     // Add highlights if the chord was found
     if (keysToHighlight) {
@@ -620,4 +854,3 @@ function highlightChord(chordName) {
 createKeyboard();
 
 //#endregion
-
