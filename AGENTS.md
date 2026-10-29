@@ -21,17 +21,17 @@ Three `#region` sections:
 
 1. **Transpose** (lines 12–70): `transposeChord(chord, steps)` shifts a chord root by semitone steps using the chromatic scale `['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']`. `updateTranspose()` applies current transpose amount to all chord nodes with a `chord` attribute.
 
-2. **Fretboard** (lines 72–130): 12 frets built dynamically. Touch drag selects a fret number, setting `transposeAmount`. Marker dots at frets 3,5,7,9,12.
+2. **Fretboard** (lines 72–130): 12 frets built dynamically, acting as a capo. Pointer events (touch, mouse, pen): tap a fret to place the capo, drag to slide it, tap the capo fret again to remove it. `setCapo(n)` sets `transposeAmount` and re-transposes. Marker dots at frets 3,5,7,9,12.
 
-3. **Chord Data** (lines 132–289): 10 chord dictionaries (`fifths`, `min`, `sevenths`, `aug`, `dim`, `m7`, `maj`, `maj7`, `sus2`, `sus4`) each mapping chord names to note arrays. `chordLists` aggregates them. `getChordNotes()` is stubbed empty.
+3. **Chord Data**: 16 chord dictionaries (`fifths`, `min`, `sevenths`, `aug`, `dim`, `m7`, `maj`, `maj7`, `sus2`, `sus4`, `m6`, `m9`, `m11`, `madd9`, `mMaj7`, `m7b5`) each mapping chord names to note arrays (pitch classes). `chordLists` aggregates them.
 
-4. **Chord Picker** (lines 291–407): Touch-based chord selector. Tap a root button → dropdown with all chord types for that root. Tap outside → adds chord to pre/post-transpose grids. Tapping a post-transpose chord highlights it on the keyboard.
+4. **Chord Picker**: Bottom-sheet selector (`#chord-sheet` in `index.html`). Tap a root button → sheet with natural/sharp toggle, variation chips grouped by `variationGroups`, note preview, and an Add button that appends to the pre/post-transpose grids. Dismiss by tapping the backdrop or swiping the header down. `getChordNotes(name)` looks up notes across `chordLists`. Tapping a post-transpose chord highlights it on the keyboard.
 
 5. **Keyboard** (lines 409–483): Piano keyboard built dynamically. `highlightChord(name)` highlights matching keys.
 
 ## Conventions
 
-- Touch events only (no pointer/mouse events) — mobile-first
+- Mobile-first: pointer events for the fretboard, `touch*` for the sheet swipe, `click` for taps
 - Elements identified by `id` and `class`, chord data carried as `chord` attribute
 - No module system — everything in global scope
 - `//#region` / `// #endregion` markers for code folding

@@ -15,23 +15,15 @@ function transposeChord(chord, steps) {
   // Define the chromatic scale
   const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   
-  // Helper function to get the root note and its accidental (e.g., 'C#', 'Db')
+  // Helper function to get the root note and its accidental (e.g., 'C', 'C#')
   function getRootNote(chord) {
-    const regex = /^([A-G]+)([#b]*)/; // Match root note (e.g., "C", "Db", "D#")
-    const match = chord.match(regex);
+    const match = chord.match(/^[A-G]#?/);
     return match ? match[0] : null;
   }
 
-  // Helper function to get the chord's modifiers (e.g., 'm', 'maj7', '7')
-  function getModifiers(chord) {
-    const regex = /([a-z0-9]+)/g; 
-    const match = chord.match(regex);
-    return match && match.length > 1 ? match.slice(1).join('') : '';
-  }
-
-  // Get the root note and the modifiers from the chord
+  // Get the root note and the modifiers (everything after the root, e.g. 'm', 'mMaj7', 'm7b5')
   const rootNote = getRootNote(chord);
-  const modifiers = getModifiers(chord);
+  const modifiers = rootNote ? chord.slice(rootNote.length) : '';
   
   // Find the index of the root note in the chromatic scale
   const index = notes.indexOf(rootNote);
@@ -58,9 +50,7 @@ function updateTranspose() {
   postTranspose.childNodes.forEach(node => {
     if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("chord")) {
       const baseChord = node.getAttribute("chord").toString();
-      const chordType = baseChord.replace(/^[A-G]#?/, '').toString();
-      const result = transposeChord(baseChord, transposeAmount);
-      node.textContent = result + chordType;
+      node.textContent = transposeChord(baseChord, transposeAmount);
     }
   });
 
@@ -74,30 +64,64 @@ function updateTranspose() {
 const instrument_1 = document.getElementById("instrument-1");
 let frets = document.querySelectorAll(".fret");
 
-// Function to change color if the touch is inside the div
-function checkHovers(event) {
-  const touch = event.touches[0]; // Get the first touch point
+let capoDragging = false;
+let capoMoved = false;
+let capoTappedCurrent = false;
 
-  frets.forEach(fret => {
-    const rect = fret.getBoundingClientRect(); // Get the div's position and size
-    // Check if the touch is inside the div
-    const isTouchInside = touch.clientX >= rect.left && touch.clientX <= rect.right &&
-    touch.clientY >= rect.top && touch.clientY <= rect.bottom;
-
-    if (isTouchInside) {
-      fret.classList.add("hovered");
-      transposeAmount = parseInt(fret.getAttribute("fret-number"));
+// Find the fret under the pointer by x position only, so a drag that drifts off the bar still tracks
+function fretAtX(x) {
+  for (const fret of frets) {
+    const rect = fret.getBoundingClientRect();
+    if (x >= rect.left && x <= rect.right) {
+      return parseInt(fret.getAttribute("fret-number"));
     }
-    else {
-      fret.classList.remove("hovered");
-    }
-  });
+  }
+  return null;
 }
 
-instrument_1.addEventListener("touchmove", (event) => checkHovers(event));
-instrument_1.addEventListener("touchend", () => {
+// Place the capo on a fret (0 = no capo) and transpose
+function setCapo(amount) {
+  transposeAmount = amount;
+  frets.forEach(fret => {
+    fret.classList.toggle("hovered", parseInt(fret.getAttribute("fret-number")) === amount);
+  });
   updateTranspose();
+}
+
+// Pointer events cover touch, mouse and pen: tap a fret to place the capo, drag to slide it
+instrument_1.addEventListener("pointerdown", (event) => {
+  const fretNumber = fretAtX(event.clientX);
+  if (fretNumber === null) return;
+
+  instrument_1.setPointerCapture(event.pointerId);
+  capoDragging = true;
+  capoMoved = false;
+  capoTappedCurrent = fretNumber === transposeAmount;
+  setCapo(fretNumber);
 });
+
+instrument_1.addEventListener("pointermove", (event) => {
+  if (!capoDragging) return;
+
+  const fretNumber = fretAtX(event.clientX);
+  if (fretNumber !== null && fretNumber !== transposeAmount) {
+    capoMoved = true;
+    setCapo(fretNumber);
+  }
+});
+
+function endCapoDrag() {
+  if (!capoDragging) return;
+  capoDragging = false;
+
+  // Tapping the fret the capo is already on removes it
+  if (capoTappedCurrent && !capoMoved) {
+    setCapo(0);
+  }
+}
+
+instrument_1.addEventListener("pointerup", endCapoDrag);
+instrument_1.addEventListener("pointercancel", endCapoDrag);
 
 for (let i = 0; i < 12; i++) {
   const fret = document.createElement("div");
@@ -280,125 +304,277 @@ const sus4 = {
   'Gsus4': ['G', 'C', 'D']
 };
 
-const chordLists = [fifths, min, sevenths, aug, dim, m7, maj, maj7, sus2, sus4];
+const m6 = {
+  'A#m6': ['A#', 'C#', 'F', 'G'],
+  'Am6': ['A', 'C', 'E', 'F#'],
+  'Bm6': ['B', 'D', 'F#', 'G#'],
+  'C#m6': ['C#', 'E', 'G#', 'A#'],
+  'Cm6': ['C', 'D#', 'G', 'A'],
+  'D#m6': ['D#', 'F#', 'A#', 'C'],
+  'Dm6': ['D', 'F', 'A', 'B'],
+  'Em6': ['E', 'G', 'B', 'C#'],
+  'F#m6': ['F#', 'A', 'C#', 'D#'],
+  'Fm6': ['F', 'G#', 'C', 'D'],
+  'G#m6': ['G#', 'B', 'D#', 'F'],
+  'Gm6': ['G', 'A#', 'D', 'E']
+};
+
+const m9 = {
+  'A#m9': ['A#', 'C#', 'F', 'G#', 'C'],
+  'Am9': ['A', 'C', 'E', 'G', 'B'],
+  'Bm9': ['B', 'D', 'F#', 'A', 'C#'],
+  'C#m9': ['C#', 'E', 'G#', 'B', 'D#'],
+  'Cm9': ['C', 'D#', 'G', 'A#', 'D'],
+  'D#m9': ['D#', 'F#', 'A#', 'C#', 'F'],
+  'Dm9': ['D', 'F', 'A', 'C', 'E'],
+  'Em9': ['E', 'G', 'B', 'D', 'F#'],
+  'F#m9': ['F#', 'A', 'C#', 'E', 'G#'],
+  'Fm9': ['F', 'G#', 'C', 'D#', 'G'],
+  'G#m9': ['G#', 'B', 'D#', 'F#', 'A#'],
+  'Gm9': ['G', 'A#', 'D', 'F', 'A']
+};
+
+const m11 = {
+  'A#m11': ['A#', 'C#', 'F', 'G#', 'C', 'D#'],
+  'Am11': ['A', 'C', 'E', 'G', 'B', 'D'],
+  'Bm11': ['B', 'D', 'F#', 'A', 'C#', 'E'],
+  'C#m11': ['C#', 'E', 'G#', 'B', 'D#', 'F#'],
+  'Cm11': ['C', 'D#', 'G', 'A#', 'D', 'F'],
+  'D#m11': ['D#', 'F#', 'A#', 'C#', 'F', 'G#'],
+  'Dm11': ['D', 'F', 'A', 'C', 'E', 'G'],
+  'Em11': ['E', 'G', 'B', 'D', 'F#', 'A'],
+  'F#m11': ['F#', 'A', 'C#', 'E', 'G#', 'B'],
+  'Fm11': ['F', 'G#', 'C', 'D#', 'G', 'A#'],
+  'G#m11': ['G#', 'B', 'D#', 'F#', 'A#', 'C#'],
+  'Gm11': ['G', 'A#', 'D', 'F', 'A', 'C']
+};
+
+const madd9 = {
+  'A#madd9': ['A#', 'C#', 'F', 'C'],
+  'Amadd9': ['A', 'C', 'E', 'B'],
+  'Bmadd9': ['B', 'D', 'F#', 'C#'],
+  'C#madd9': ['C#', 'E', 'G#', 'D#'],
+  'Cmadd9': ['C', 'D#', 'G', 'D'],
+  'D#madd9': ['D#', 'F#', 'A#', 'F'],
+  'Dmadd9': ['D', 'F', 'A', 'E'],
+  'Emadd9': ['E', 'G', 'B', 'F#'],
+  'F#madd9': ['F#', 'A', 'C#', 'G#'],
+  'Fmadd9': ['F', 'G#', 'C', 'G'],
+  'G#madd9': ['G#', 'B', 'D#', 'A#'],
+  'Gmadd9': ['G', 'A#', 'D', 'A']
+};
+
+const mMaj7 = {
+  'A#mMaj7': ['A#', 'C#', 'F', 'A'],
+  'AmMaj7': ['A', 'C', 'E', 'G#'],
+  'BmMaj7': ['B', 'D', 'F#', 'A#'],
+  'C#mMaj7': ['C#', 'E', 'G#', 'C'],
+  'CmMaj7': ['C', 'D#', 'G', 'B'],
+  'D#mMaj7': ['D#', 'F#', 'A#', 'D'],
+  'DmMaj7': ['D', 'F', 'A', 'C#'],
+  'EmMaj7': ['E', 'G', 'B', 'D#'],
+  'F#mMaj7': ['F#', 'A', 'C#', 'F'],
+  'FmMaj7': ['F', 'G#', 'C', 'E'],
+  'G#mMaj7': ['G#', 'B', 'D#', 'G'],
+  'GmMaj7': ['G', 'A#', 'D', 'F#']
+};
+
+const m7b5 = {
+  'A#m7b5': ['A#', 'C#', 'E', 'G#'],
+  'Am7b5': ['A', 'C', 'D#', 'G'],
+  'Bm7b5': ['B', 'D', 'F', 'A'],
+  'C#m7b5': ['C#', 'E', 'G', 'B'],
+  'Cm7b5': ['C', 'D#', 'F#', 'A#'],
+  'D#m7b5': ['D#', 'F#', 'A', 'C#'],
+  'Dm7b5': ['D', 'F', 'G#', 'C'],
+  'Em7b5': ['E', 'G', 'A#', 'D'],
+  'F#m7b5': ['F#', 'A', 'C', 'E'],
+  'Fm7b5': ['F', 'G#', 'B', 'D#'],
+  'G#m7b5': ['G#', 'B', 'D', 'F#'],
+  'Gm7b5': ['G', 'A#', 'C#', 'F']
+};
+
+const chordLists = [fifths, min, sevenths, aug, dim, m7, maj, maj7, sus2, sus4, m6, m9, m11, madd9, mMaj7, m7b5];
 
 //#endregion
 
 //#region Chords picker
 
 const chordButtons = document.querySelectorAll(".chord-button");
+const chordSheet = document.getElementById("chord-sheet");
+const sheetPanel = chordSheet.querySelector(".sheet-panel");
+const sheetGrabber = chordSheet.querySelector(".sheet-grabber");
+const sheetBackdrop = chordSheet.querySelector(".sheet-backdrop");
+const sheetRoots = document.getElementById("sheet-roots");
+const sheetPreview = document.getElementById("sheet-preview");
+const sheetNotes = document.getElementById("sheet-notes");
+const sheetVariations = document.getElementById("sheet-variations");
+const sheetAdd = document.getElementById("sheet-add");
+
+// Chord suffixes offered in the picker, grouped by family ('' is the plain major triad)
+const variationGroups = [
+  { label: "Major", suffixes: ["", "maj7", "5", "sus2", "sus4", "aug"] },
+  { label: "Minor", suffixes: ["min", "m6", "m7", "m9", "m11", "madd9", "mMaj7", "m7b5"] },
+  { label: "Dominant & diminished", suffixes: ["7", "dim"] }
+];
 
 let activeButton = null;
+let sheetRoot = "A";
+let sheetSuffix = "";
 
-chordButtons.forEach(button => {
-  const chordSelector = button.querySelector(".chord-selector");
-  chordSelector.classList.add("hidden");
-
-  const buttonChordName = button.getAttribute("chord") || button.textContent.trim(); // e.g., "A", "C#"
-  const root = buttonChordName.replace(/[^A-G#]/g, ''); // Extract root note
-
-  // Loop through all chord lists
-  chordLists.forEach(chordList => {
-    Object.keys(chordList).forEach(chordName => {
-      if (chordName.startsWith(root)) {
-        const chordDiv = document.createElement("div");
-        chordDiv.className = "selector-option";
-        chordDiv.textContent = chordName;
-        chordSelector.appendChild(chordDiv);
-      }
-    })
-  });
-
-  button.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    chordSelector.classList.remove("hidden");
-    activeButton = button;
-  });
-});
-
-// Add only one touchend listener
-document.addEventListener("touchend", (e) => {
-  if (!activeButton) return;
-
-  const chordSelector = activeButton.querySelector(".chord-selector");
-  if (!chordSelector) return;
-
-  const touch = e.changedTouches[0];
-  const target = document.elementFromPoint(touch.clientX, touch.clientY);
-
-  if (chordSelector.contains(target)) {
-    const newChord = target.textContent;
-    if (target.matches(".some-option")) {
-      console.log("User selected option:", newChord);
+function getChordNotes(chordName) {
+  for (const dict of chordLists) {
+    if (dict[chordName]) {
+      return dict[chordName];
     }
-    activeButton.setAttribute("chord", newChord);
-    activeButton.querySelector(".chord-text").textContent = newChord;
-
-    highlightChord(newChord);
   }
-  else
-  {
-    const newChord = activeButton.getAttribute("chord");
+  return null;
+}
 
-    console.log("ADD CHORD: " + newChord);
-    
-    const button = document.createElement("button");
-    button.setAttribute("chord", newChord);
-    button.setAttribute("type", "button");
-    button.classList.add("pre-chord-button");
-    button.textContent = newChord;
+function splitChord(chordName) {
+  const root = chordName.match(/^[A-G]#?/)[0];
+  return { root, suffix: chordName.slice(root.length) };
+}
 
-    button.addEventListener("click", () => {
-      const index = Array.from(preTranspose.children).indexOf(button) + 1;
-      preTranspose.childNodes[index].remove();
-      postTranspose.childNodes[index].remove();
-    });
+function addChord(newChord) {
+  const button = document.createElement("button");
+  button.setAttribute("chord", newChord);
+  button.setAttribute("type", "button");
+  button.classList.add("pre-chord-button");
+  button.textContent = newChord;
 
-    const postButton = button.cloneNode(true);
-    postButton.addEventListener("click", () => {
-      highlightChord(postButton.textContent);
-    });
+  button.addEventListener("click", () => {
+    const index = Array.from(preTranspose.children).indexOf(button) + 1;
+    preTranspose.childNodes[index].remove();
+    postTranspose.childNodes[index].remove();
+  });
 
-    postTranspose.appendChild(postButton);
+  const postButton = button.cloneNode(true);
+  postButton.addEventListener("click", () => {
+    highlightChord(postButton.textContent);
+  });
 
-    preTranspose.appendChild(button);
-  }
-
-  chordSelector.classList.add("hidden");
-  activeButton = null;
+  postTranspose.appendChild(postButton);
+  preTranspose.appendChild(button);
 
   updateTranspose();
+}
+
+// Build the variation chips once; they only depend on the suffix
+variationGroups.forEach(group => {
+  const heading = document.createElement("div");
+  heading.className = "variation-heading";
+  heading.textContent = group.label;
+  sheetVariations.appendChild(heading);
+
+  const grid = document.createElement("div");
+  grid.className = "variation-grid";
+  group.suffixes.forEach(suffix => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "variation-chip";
+    chip.dataset.suffix = suffix;
+    chip.textContent = suffix || "maj";
+    chip.addEventListener("click", () => {
+      sheetSuffix = suffix;
+      renderSheet();
+      highlightChord(sheetRoot + sheetSuffix);
+    });
+    grid.appendChild(chip);
+  });
+  sheetVariations.appendChild(grid);
 });
 
-// chordButtons.forEach(button => {
-//   button.addEventListener("click", () => {
-//     const chord = button.getAttribute("chord");
+function renderSheet() {
+  const chordName = sheetRoot + sheetSuffix;
+  sheetPreview.textContent = chordName;
+  sheetNotes.textContent = (getChordNotes(chordName) || []).join("  ·  ");
+  sheetAdd.textContent = `Add ${chordName}`;
 
-//     const preButton = button.cloneNode(true);
-//     preTranspose.appendChild(preButton);
+  sheetRoots.querySelectorAll(".root-toggle").forEach(toggle => {
+    toggle.classList.toggle("selected", toggle.dataset.root === sheetRoot);
+  });
+  sheetVariations.querySelectorAll(".variation-chip").forEach(chip => {
+    chip.classList.toggle("selected", chip.dataset.suffix === sheetSuffix);
+  });
+}
 
-//     const postButton = button.cloneNode(true);
-//     postTranspose.appendChild(postButton);
+function openSheet(button) {
+  activeButton = button;
+  ({ root: sheetRoot, suffix: sheetSuffix } = splitChord(button.getAttribute("chord")));
 
-//     preButton.addEventListener("click", () => {
-//       const index = Array.from(preTranspose.children).indexOf(preButton) + 1;
-//       preTranspose.childNodes[index].remove();
-//       postTranspose.childNodes[index].remove();
-//     });
+  // Natural / sharp toggle for this button's letter (E and B have no sharp)
+  const natural = sheetRoot[0];
+  const roots = (natural === "E" || natural === "B") ? [natural] : [natural, natural + "#"];
+  sheetRoots.innerHTML = "";
+  roots.forEach(root => {
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "root-toggle";
+    toggle.dataset.root = root;
+    toggle.textContent = root;
+    toggle.addEventListener("click", () => {
+      sheetRoot = root;
+      renderSheet();
+      highlightChord(sheetRoot + sheetSuffix);
+    });
+    sheetRoots.appendChild(toggle);
+  });
 
-//     postButton.addEventListener("click", () => {
-//       highlightChord(postButton.textContent);
+  renderSheet();
+  highlightChord(sheetRoot + sheetSuffix);
+  sheetVariations.scrollTop = 0;
+  chordSheet.classList.add("open");
+  chordSheet.setAttribute("aria-hidden", "false");
+}
 
-//       postButton.classList.add("highlight");
-//       setTimeout(() => {
-//         postButton.classList.remove("highlight");
-//       }, 1000);
-//     });
+function closeSheet() {
+  activeButton = null;
+  sheetPanel.style.transform = "";
+  chordSheet.classList.remove("open");
+  chordSheet.setAttribute("aria-hidden", "true");
+}
 
-//     updateTranspose();
-//   });
-// });
+chordButtons.forEach(button => {
+  button.addEventListener("click", () => openSheet(button));
+});
 
+sheetAdd.addEventListener("click", () => {
+  const chordName = sheetRoot + sheetSuffix;
+  activeButton.setAttribute("chord", chordName);
+  activeButton.querySelector(".chord-text").textContent = chordName;
+  addChord(chordName);
+  closeSheet();
+});
+
+sheetBackdrop.addEventListener("click", closeSheet);
+
+// Swipe the sheet header down to dismiss
+let dragStartY = null;
+let dragOffset = 0;
+
+sheetGrabber.addEventListener("touchstart", (e) => {
+  dragStartY = e.touches[0].clientY;
+  dragOffset = 0;
+  sheetPanel.classList.add("dragging");
+}, { passive: true });
+
+sheetGrabber.addEventListener("touchmove", (e) => {
+  if (dragStartY === null) return;
+  dragOffset = Math.max(0, e.touches[0].clientY - dragStartY);
+  sheetPanel.style.transform = `translateY(${dragOffset}px)`;
+}, { passive: true });
+
+sheetGrabber.addEventListener("touchend", () => {
+  sheetPanel.classList.remove("dragging");
+  if (dragOffset > 80) {
+    closeSheet();
+  }
+  else {
+    sheetPanel.style.transform = "";
+  }
+  dragStartY = null;
+});
 
 //#endregion
 
@@ -426,15 +602,7 @@ function createKeyboard() {
 }
 
 function highlightChord(chordName) {
-    let keysToHighlight = null;
-
-    // Search in all chord dictionaries
-    for (const dict of chordLists) {
-        if (dict[chordName]) {
-            keysToHighlight = dict[chordName];
-            break;
-        }
-    }
+    const keysToHighlight = getChordNotes(chordName);
 
     // Remove existing highlights
     document.querySelectorAll(".key").forEach(key => key.classList.remove("highlight"));

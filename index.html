@@ -22,13 +22,13 @@
         
         <p id="transpose-amount">0</p>
         <div id="chords" class="chord-grid">
-            <button type="button" chord="A" class="chord-button"><div class="chord-text">A</div><div class="chord-selector"></button>
-            <button type="button" chord="B" class="chord-button"><div class="chord-text">B</div><div class="chord-selector"></button>
-            <button type="button" chord="C" class="chord-button"><div class="chord-text">C</div><div class="chord-selector"></button>
-            <button type="button" chord="D" class="chord-button"><div class="chord-text">D</div><div class="chord-selector"></button>
-            <button type="button" chord="E" class="chord-button"><div class="chord-text">E</div><div class="chord-selector"></button>
-            <button type="button" chord="F" class="chord-button"><div class="chord-text">F</div><div class="chord-selector"></button>
-            <button type="button" chord="G" class="chord-button"><div class="chord-text">G</div><div class="chord-selector"></button>
+            <button type="button" chord="A" class="chord-button"><div class="chord-text">A</div></button>
+            <button type="button" chord="B" class="chord-button"><div class="chord-text">B</div></button>
+            <button type="button" chord="C" class="chord-button"><div class="chord-text">C</div></button>
+            <button type="button" chord="D" class="chord-button"><div class="chord-text">D</div></button>
+            <button type="button" chord="E" class="chord-button"><div class="chord-text">E</div></button>
+            <button type="button" chord="F" class="chord-button"><div class="chord-text">F</div></button>
+            <button type="button" chord="G" class="chord-button"><div class="chord-text">G</div></button>
         </div>
 
         <div id="instrument-2">
@@ -42,7 +42,25 @@
         
 
     </div>
-    
+
+    <div id="chord-sheet" class="sheet" aria-hidden="true">
+        <div class="sheet-backdrop"></div>
+        <div class="sheet-panel" role="dialog" aria-label="Choose chord variation">
+            <div class="sheet-grabber">
+                <div class="sheet-handle"></div>
+                <div class="sheet-header">
+                    <div id="sheet-roots" class="sheet-roots"></div>
+                    <div class="sheet-summary">
+                        <div id="sheet-preview" class="sheet-preview"></div>
+                        <div id="sheet-notes" class="sheet-notes"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="sheet-variations" class="sheet-variations"></div>
+            <button id="sheet-add" type="button" class="sheet-add">Add</button>
+        </div>
+    </div>
+
     <script src="app.js" defer></script>
 </body>
 </html>

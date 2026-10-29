@@ -1,4 +1,4 @@
-const cacheName = 'chordshift-pwa-cache-v1';
+const cacheName = 'chordshift-pwa-cache-v3';
 const assets = [
   './',
   './manifest.json',
