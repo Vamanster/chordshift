@@ -40,21 +40,38 @@ function transposeChord(chord, steps) {
   return transposedRoot + modifiers;
 }
 
-const preTranspose = document.getElementById("pre-transpose");
-const postTranspose = document.getElementById("post-transpose");
+const progressionEl = document.getElementById("progression"); // original chords
+const transposedEl = document.getElementById("transposed");
 const transposeAmountText = document.getElementById("transpose-amount");
 
 let transposeAmount = 0;
 
+// Original chord names, in progression order
+function getOriginals() {
+  return Array.from(progressionEl.children).map(chip => chip.getAttribute("chord"));
+}
+
+// Transposed chord names, in progression order
+function getProgression() {
+  return Array.from(progressionEl.children).map(chip => transposeChord(chip.getAttribute("chord"), transposeAmount));
+}
+
+// Rebuild the transposed row to match the originals' order and the capo
 function updateTranspose() {
-  postTranspose.childNodes.forEach(node => {
-    if (node.nodeType === Node.ELEMENT_NODE && node.hasAttribute("chord")) {
-      const baseChord = node.getAttribute("chord").toString();
-      node.textContent = transposeChord(baseChord, transposeAmount);
-    }
+  transposedEl.innerHTML = "";
+  getProgression().forEach((chordName, index) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chord-chip transposed";
+    chip.textContent = chordName;
+    chip.addEventListener("click", () => selectChord(progressionEl.children[index], "transposed"));
+    transposedEl.appendChild(chip);
   });
 
-  transposeAmountText.textContent = transposeAmount;
+  transposeAmountText.textContent = transposeAmount === 0 ? "No capo" : `Fret ${transposeAmount} · +${transposeAmount}`;
+
+  // Keep the selection and keyboard in step
+  renderSelection();
 }
 
 //#endregion
@@ -83,7 +100,7 @@ function fretAtX(x) {
 function setCapo(amount) {
   transposeAmount = amount;
   frets.forEach(fret => {
-    fret.classList.toggle("hovered", parseInt(fret.getAttribute("fret-number")) === amount);
+    fret.classList.toggle("capo", parseInt(fret.getAttribute("fret-number")) === amount);
   });
   updateTranspose();
 }
@@ -123,29 +140,21 @@ function endCapoDrag() {
 instrument_1.addEventListener("pointerup", endCapoDrag);
 instrument_1.addEventListener("pointercancel", endCapoDrag);
 
+// Frets run from 12 (left) to 1 (right, next to the nut), widening towards the nut
 for (let i = 0; i < 12; i++) {
+  const fretNumber = 12 - i;
   const fret = document.createElement("div");
   fret.classList.add("fret");
-  fret.style.width = `calc(${i}px + 5vw)`;
-  fret.style.height = `calc(${6 - (i / 2)}px + 8vh)`;
-  fret.setAttribute("fret-number", 12 - i);
-  switch (12 - i) {
-    case 3:
-      fret.textContent = "○"
-      break;
-    case 5:
-      fret.textContent = "○"
-      break;
-    case 7:
-      fret.textContent = "○"
-      break;
-    case 9:
-      fret.textContent = "○"
-      break;
-    case 12:
-      fret.innerHTML = "◌<br/><br/>◌"
-      break;
+  fret.style.flex = `${1 + i * 0.04}`;
+  fret.setAttribute("fret-number", fretNumber);
+
+  const inlays = { 3: 1, 5: 1, 7: 1, 9: 1, 12: 2 }[fretNumber] || 0;
+  for (let d = 0; d < inlays; d++) {
+    const inlay = document.createElement("span");
+    inlay.className = "inlay";
+    fret.appendChild(inlay);
   }
+
   instrument_1.appendChild(fret);
 }
 
@@ -571,32 +580,128 @@ function splitChord(chordName) {
 }
 
 function addChord(newChord) {
-  const button = document.createElement("button");
-  button.setAttribute("chord", newChord);
-  button.setAttribute("type", "button");
-  button.classList.add("pre-chord-button");
-  button.textContent = newChord;
+  const chip = document.createElement("div");
+  chip.className = "chord-chip";
+  chip.setAttribute("chord", newChord);
+  chip.innerHTML = `<span class="chip-label">${newChord}</span>` +
+    `<button type="button" class="chip-remove" aria-label="Remove ${newChord}">×</button>`;
 
-  button.addEventListener("click", () => {
-    const index = Array.from(preTranspose.children).indexOf(button) + 1;
-    preTranspose.childNodes[index].remove();
-    postTranspose.childNodes[index].remove();
+  chip.querySelector(".chip-remove").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (selection && selection.chip === chip) {
+      selection = null;
+    }
+    chip.remove();
+    clearHighlight();
+    updateTranspose();
   });
 
-  const postButton = button.cloneNode(true);
-  postButton.addEventListener("click", () => {
-    highlightChord(postButton.textContent, Array.from(postTranspose.children).indexOf(postButton));
-  });
-
-  postTranspose.appendChild(postButton);
-  preTranspose.appendChild(button);
-
+  progressionEl.appendChild(chip);
   updateTranspose();
 }
 
-// Show the chord being picked on the keyboard, as it will sound after transposing
+// The chord last tapped: its original chip, and which row it was tapped in ("original" or "transposed")
+let selection = null;
+
+function selectChord(chip, row) {
+  selection = { chip, row };
+  renderSelection();
+}
+
+// Highlight the selected chip and show only that chord on the keyboard; an original also shows its remove button
+function renderSelection() {
+  clearCardSelection();
+  if (!selection || !selection.chip.isConnected) {
+    selection = null;
+    return;
+  }
+
+  const index = Array.from(progressionEl.children).indexOf(selection.chip);
+  const isOriginal = selection.row === "original";
+  const shown = isOriginal ? selection.chip : transposedEl.children[index];
+  shown.classList.add("selected");
+  selection.chip.classList.toggle("editing", isOriginal);
+  showChord(isOriginal ? selection.chip.getAttribute("chord") : shown.textContent, index, selection.row);
+}
+
+function clearCardSelection() {
+  document.querySelectorAll(".chord-chip.selected").forEach(chip => chip.classList.remove("selected", "editing"));
+}
+
+// Drag an original chord to reorder the progression; a tap without movement selects it
+let dragChip = null;
+let dragStart = null;
+let dragMoved = false;
+
+progressionEl.addEventListener("pointerdown", (e) => {
+  const chip = e.target.closest(".chord-chip");
+  if (!chip || e.target.closest(".chip-remove")) return;
+
+  dragChip = chip;
+  dragStart = { x: e.clientX, y: e.clientY };
+  dragMoved = false;
+  progressionEl.setPointerCapture(e.pointerId);
+});
+
+progressionEl.addEventListener("pointermove", (e) => {
+  if (!dragChip) return;
+
+  if (!dragMoved) {
+    if (Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y) < 8) return;
+    dragMoved = true;
+    dragChip.classList.add("dragging");
+  }
+
+  // Move the dragged chip before or after whichever chip the pointer is over
+  for (const other of progressionEl.children) {
+    if (other === dragChip) continue;
+    const rect = other.getBoundingClientRect();
+    if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+      const before = e.clientX < rect.left + rect.width / 2;
+      progressionEl.insertBefore(dragChip, before ? other : other.nextSibling);
+      break;
+    }
+  }
+});
+
+function endChipDrag() {
+  if (!dragChip) return;
+  const chip = dragChip;
+  dragChip = null;
+
+  if (dragMoved) {
+    chip.classList.remove("dragging");
+    updateTranspose();
+  }
+  else {
+    selectChord(chip, "original");
+  }
+}
+
+progressionEl.addEventListener("pointerup", endChipDrag);
+progressionEl.addEventListener("pointercancel", () => {
+  dragMoved = true; // a cancelled gesture never counts as a tap
+  endChipDrag();
+});
+
+// Dock buttons show the last chord picked for their letter: root large, suffix small underneath
+function setDockLabel(button, chordName) {
+  const { root, suffix } = splitChord(chordName);
+  const label = button.querySelector(".chord-text");
+  label.textContent = root;
+  if (suffix) {
+    const small = document.createElement("span");
+    small.className = "chord-suffix";
+    small.textContent = suffix;
+    label.appendChild(small);
+  }
+}
+
+// Show the chord being picked on the keyboard
 function previewSheetChord() {
-  highlightChord(transposeChord(sheetRoot + sheetSuffix, transposeAmount));
+  clearCardSelection();
+  selection = null;
+  showChord(sheetRoot + sheetSuffix, undefined, "original");
 }
 
 function openSheet(sheet) {
@@ -717,7 +822,7 @@ chordButtons.forEach(button => {
 sheetAdd.addEventListener("click", () => {
   const chordName = sheetRoot + sheetSuffix;
   activeButton.setAttribute("chord", chordName);
-  activeButton.querySelector(".chord-text").textContent = chordName;
+  setDockLabel(activeButton, chordName);
   addChord(chordName);
   closeSheet(chordSheet);
 });
@@ -727,7 +832,7 @@ sheetAdd.addEventListener("click", () => {
 //#region Settings
 
 const settingsKey = "chordshift-settings";
-const settings = { smartVoicing: false, handSpan: 12 };
+const settings = { smartVoicing: false, handSpan: 12, theme: "dark" };
 
 try {
   Object.assign(settings, JSON.parse(localStorage.getItem(settingsKey)) || {});
@@ -747,8 +852,18 @@ const settingsSheet = document.getElementById("settings-sheet");
 const settingsButton = document.getElementById("settings-button");
 const smartVoicingToggle = document.getElementById("setting-smart-voicing");
 const handSpanSetting = document.getElementById("setting-hand-span");
+const themeSetting = document.getElementById("setting-theme");
+
+// Dark is the default; light is a variant
+function applyTheme() {
+  document.documentElement.dataset.theme = settings.theme;
+  document.querySelector("meta[name='theme-color']").content = settings.theme === "light" ? "#F4F1EA" : "#14161B";
+}
 
 function renderSettings() {
+  themeSetting.querySelectorAll("button").forEach(button => {
+    button.classList.toggle("selected", button.dataset.themeOption === settings.theme);
+  });
   smartVoicingToggle.checked = settings.smartVoicing;
   handSpanSetting.classList.toggle("disabled", !settings.smartVoicing);
   handSpanSetting.querySelectorAll("button").forEach(button => {
@@ -776,6 +891,17 @@ handSpanSetting.querySelectorAll("button").forEach(button => {
     renderSettings();
   });
 });
+
+themeSetting.querySelectorAll("button").forEach(button => {
+  button.addEventListener("click", () => {
+    settings.theme = button.dataset.themeOption;
+    saveSettings();
+    applyTheme();
+    renderSettings();
+  });
+});
+
+applyTheme();
 
 document.getElementById("settings-done").addEventListener("click", () => closeSheet(settingsSheet));
 
@@ -814,41 +940,58 @@ function createKeyboard() {
 }
 
 // progressionIndex: position in the post-transpose list, or undefined to preview a chord as if added next
-function highlightChord(chordName, progressionIndex) {
-    // Remove existing highlights
+const keysChord = document.getElementById("keys-chord");
+
+function clearHighlight() {
+    keysChord.textContent = "";
     document.querySelectorAll(".key").forEach(key => {
-        key.classList.remove("highlight");
+        key.classList.remove("highlight", "highlight-original");
         delete key.dataset.finger;
     });
+}
 
+// Mark one chord's keys with className: its voicing when smart hand position is on, otherwise every matching note
+function markChord(chordName, className, progression, progressionIndex, showFingers) {
     if (settings.smartVoicing) {
-        const progression = Array.from(postTranspose.children).map(button => button.textContent);
+        const names = [...progression];
         if (progressionIndex === undefined) {
-            progression.push(chordName);
-            progressionIndex = progression.length - 1;
+            names.push(chordName);
+            progressionIndex = names.length - 1;
         }
 
-        const voicing = voiceProgression(progression)[progressionIndex];
+        const voicing = voiceProgression(names)[progressionIndex];
         if (voicing) {
             voicing.keys.forEach((midi, i) => {
                 const key = document.querySelector(`.key[data-midi='${midi}']`);
-                key.classList.add("highlight");
-                key.dataset.finger = voicing.fingers[i];
+                key.classList.add(className);
+                if (showFingers) {
+                    key.dataset.finger = voicing.fingers[i];
+                }
             });
             return;
         }
     }
 
-    const keysToHighlight = getChordNotes(chordName);
-
-    // Add highlights if the chord was found
-    if (keysToHighlight) {
-        keysToHighlight.forEach(note => {
-            document.querySelectorAll(`[data-note='${note}']`).forEach(el => el.classList.add("highlight"));
+    const notes = getChordNotes(chordName);
+    if (notes) {
+        notes.forEach(note => {
+            document.querySelectorAll(`.key[data-note='${note}']`).forEach(el => el.classList.add(className));
         });
     } else {
         console.warn(`Chord not found: ${chordName}`);
     }
+}
+
+// Show one chord on the keys, coloured by its row ("original" blue, "transposed" amber).
+// progressionIndex: position in the progression, or undefined to preview a chord as if added next
+function showChord(chordName, progressionIndex, row) {
+    clearHighlight();
+    keysChord.textContent = chordName;
+    keysChord.dataset.row = row;
+
+    const isOriginal = row === "original";
+    markChord(chordName, isOriginal ? "highlight-original" : "highlight",
+        isOriginal ? getOriginals() : getProgression(), progressionIndex, true);
 }
 
 createKeyboard();

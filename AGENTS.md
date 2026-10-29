@@ -8,9 +8,9 @@ A progressive web app (PWA) for transposing guitar chords to other instruments. 
 
 | File | Purpose |
 |---|---|
-| `index.html` | Single page layout: header, pre/post-transpose chord grids, fretboard, chord buttons, piano keyboard |
+| `index.html` | Single page layout: header, original chords, capo neck, chord title and piano keyboard, transposed chords, root-note dock, chord picker and settings sheets |
 | `app.js` | All application logic (484 lines): service worker registration, chord transposition, fretboard rendering, chord data, chord picker, piano keyboard |
-| `styles.css` | All styles (164 lines): layout, fretboard, keyboard, chord buttons |
+| `styles.css` | All styles. Theme tokens on `:root` (dark "stage" default) with a `[data-theme="light"]` variant; components use only the tokens |
 | `manifest.json` | PWA manifest |
 | `service-worker.js` | Cache-first service worker |
 | `images/` | PWA icons (192x192, 512x512) |
@@ -29,9 +29,13 @@ Three `#region` sections:
 
 5. **Voicing**: Optional "smart hand position". `getVoicings(name)` enumerates one-hand voicings in C3–B4 within `settings.handSpan` (dropping a perfect 5th when needed), scored by `voicingCost` (span, finger stretch, thumb/pinky on black keys, low-register mud, root in bass, distance from middle C). `voiceProgression(names)` picks the cheapest path through the progression (Viterbi with `transitionCost` for hand movement).
 
-6. **Settings**: Gear button in the header opens `#settings-sheet`. `settings` (`smartVoicing`, `handSpan`) persists to localStorage under `chordshift-settings` (wrapped in try/catch).
+6. **Settings**: Gear button in the header opens `#settings-sheet`. `settings` (`theme`, `smartVoicing`, `handSpan`) persists to localStorage under `chordshift-settings` (wrapped in try/catch).
 
-7. **Keyboard**: Piano keyboard built dynamically (one octave, or C3–B4 when smart hand position is on). `highlightChord(name, progressionIndex)` highlights matching keys, or the chosen voicing with `data-finger` badges when smart hand position is on.
+7. **Keyboard**: Piano keyboard built dynamically (one octave, or C3–B4 when smart hand position is on). `showChord(name, progressionIndex, row)` highlights one chord via `markChord()` (voicings with `data-finger` badges when smart hand position is on).
+
+## Progression
+
+Each region (original chords, capo, keys, transposed chords) is a `.panel` with a centred `.section-title`. Two rows of `.chord-chip`s share one order: `#progression` (original chords, top, `chord` attribute) and `#transposed` (below the keyboard, rebuilt by `updateTranspose()`). `getOriginals()` / `getProgression()` return the original / transposed names. Tapping a chip in either row sets `selection` (the original chip plus the row tapped) and `renderSelection()` highlights only that chip and shows only that chord via `showChord()`: originals in blue (`.highlight-original`), transposed in amber (`.highlight`), with finger numbers when smart hand position is on. `#keys-chord` shows the chord name in the row colour. Tapping an original also shows its remove button (`.editing`); dragging an original (pointer events) reorders the progression.
 
 ## Conventions
 

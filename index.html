@@ -6,42 +6,55 @@
     <title>ChordShift</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="./images/icon-192x192.png">
+    <meta name="theme-color" content="#14161B">
     <link rel="stylesheet" href="./styles.css">
+    <script>
+        // Apply the saved theme before first paint to avoid a flash
+        try {
+            const saved = JSON.parse(localStorage.getItem("chordshift-settings"));
+            if (saved && saved.theme) document.documentElement.dataset.theme = saved.theme;
+        } catch (e) {}
+    </script>
 </head>
 <body>
     <div id="main">
-        <div id="header">
-            <H1>Chord/Shift</H1>
-            <button id="settings-button" type="button" class="settings-button" aria-label="Settings">⚙</button>
-        </div>
+        <header id="header">
+            <h1 class="logo">Chord<span class="logo-slash">/</span>Shift</h1>
+            <button id="settings-button" type="button" class="settings-button" aria-label="Settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+        </header>
 
-        <div id="pre-transpose" class="chord-grid">
-        </div>
+        <section class="panel progression-panel">
+            <div class="section-label"><span class="section-title">Original chords</span></div>
+            <div class="section-hint">Tap to show · drag to reorder</div>
+            <div id="progression" class="chord-row"></div>
+        </section>
 
-        <div id="instrument-1">
-        </div>
-        
-        <p id="transpose-amount">0</p>
-        <div id="chords" class="chord-grid">
-            <button type="button" chord="A" class="chord-button"><div class="chord-text">A</div></button>
-            <button type="button" chord="B" class="chord-button"><div class="chord-text">B</div></button>
-            <button type="button" chord="C" class="chord-button"><div class="chord-text">C</div></button>
-            <button type="button" chord="D" class="chord-button"><div class="chord-text">D</div></button>
-            <button type="button" chord="E" class="chord-button"><div class="chord-text">E</div></button>
-            <button type="button" chord="F" class="chord-button"><div class="chord-text">F</div></button>
-            <button type="button" chord="G" class="chord-button"><div class="chord-text">G</div></button>
-        </div>
+        <section class="panel capo-panel">
+            <div class="section-label"><span class="section-title">Capo</span><span id="transpose-amount" class="capo-badge">No capo</span></div>
+            <div id="instrument-1"></div>
+        </section>
 
-        <div id="instrument-2">
-        </div>
+        <section class="panel piano-panel">
+            <div id="keys-chord" class="keys-chord" aria-live="polite"></div>
+            <div id="instrument-2"></div>
+        </section>
 
-        <div id="post-transpose" class="chord-grid">
-        </div>
+        <section class="panel transposed-panel">
+            <div class="section-label"><span class="section-title">Transposed chords</span></div>
+            <div id="transposed" class="chord-row"></div>
+        </section>
 
-        <div id="footer">
-        </div>
-        
-
+        <nav id="chords" aria-label="Add a chord">
+            <button type="button" chord="A" class="chord-button"><span class="chord-text">A</span></button>
+            <button type="button" chord="B" class="chord-button"><span class="chord-text">B</span></button>
+            <button type="button" chord="C" class="chord-button"><span class="chord-text">C</span></button>
+            <button type="button" chord="D" class="chord-button"><span class="chord-text">D</span></button>
+            <button type="button" chord="E" class="chord-button"><span class="chord-text">E</span></button>
+            <button type="button" chord="F" class="chord-button"><span class="chord-text">F</span></button>
+            <button type="button" chord="G" class="chord-button"><span class="chord-text">G</span></button>
+        </nav>
     </div>
 
     <div id="chord-sheet" class="sheet" aria-hidden="true">
@@ -70,6 +83,15 @@
                 <div class="sheet-title">Settings</div>
             </div>
             <div class="sheet-body">
+                <div class="setting-row setting-stacked">
+                    <div class="setting-text">
+                        <div class="setting-name">Theme</div>
+                    </div>
+                    <div id="setting-theme" class="segmented">
+                        <button type="button" data-theme-option="dark">Dark</button>
+                        <button type="button" data-theme-option="light">Light</button>
+                    </div>
+                </div>
                 <label class="setting-row">
                     <div class="setting-text">
                         <div class="setting-name">Smart hand position</div>
