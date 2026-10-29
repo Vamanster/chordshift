@@ -282,10 +282,6 @@ const sus4 = {
 
 const chordLists = [fifths, min, sevenths, aug, dim, m7, maj, maj7, sus2, sus4];
 
-function getChordNotes(chordName) {
-  
-}
-
 //#endregion
 
 //#region Chords picker
@@ -346,7 +342,7 @@ document.addEventListener("touchend", (e) => {
 
     console.log("ADD CHORD: " + newChord);
     
-    const button = document.createElement("buton");
+    const button = document.createElement("button");
     button.setAttribute("chord", newChord);
     button.setAttribute("type", "button");
     button.classList.add("pre-chord-button");
@@ -409,32 +405,7 @@ document.addEventListener("touchend", (e) => {
 //#region Keyboard
 
 const keys = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-const majorChords = {
-  "C": ["C", "E", "G"],
-  "C#": ["C#", "F", "G#"],
-  "D": ["D", "F#", "A"],
-  "D#": ["D#", "G", "A#"],
-  "E": ["E", "G#", "B"],
-  "F": ["F", "A", "C"],
-  "F#": ["F#", "A#", "C#"],
-  "G": ["G", "B", "D"],
-  "G#": ["G#", "C", "D#"],
-  "A": ["A", "C#", "E"],
-  "A#": ["A#", "D", "F"],
-  "B": ["B", "D#", "F#"],
-  "Am": ["A", "C", "E"],
-  "A#m": ["A#", "C#", "F"],
-  "Bm": ["B", "D", "F#"],
-  "Cm": ["C", "D#", "G"],
-  "C#m": ["C#", "E", "G#"],
-  "Dm": ["D", "F", "A"],
-  "D#m": ["D#", "F#", "A#"],
-  "Em": ["E", "G", "B"],
-  "Fm": ["F", "G#", "C"],
-  "F#m": ["F#", "A", "C#"],
-  "Gm": ["G", "A#", "D"],
-  "G#m": ["G#", "B", "D#"]
-};
+
 
 function createKeyboard() {
     const instrument = document.getElementById("instrument-2");
